@@ -6,6 +6,8 @@ This can be used to parse partial json coming from a stream.
 
 ### Installation
 
+This is available on crates.io as [partial-json-fixer](https://crates.io/crates/partial-json-fixer)
+
 ```
 cargo add partial-json-fixer
 ```
