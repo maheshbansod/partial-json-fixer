@@ -16,7 +16,6 @@ pub fn fix_json(partial_json: &str) -> JResult<String> {
     let parser = JsonParser::new(tokenizer);
 
     let value = parser.parse()?;
-    println!("{value:?}");
     Ok(value.to_string())
 }
 
@@ -101,7 +100,6 @@ impl<'a> JsonParser<'a> {
     }
 
     fn parse_object(&mut self) -> JResult<JsonObject<'a>> {
-        println!("parsing obj");
         let mut values = vec![];
         loop {
             if self.tokenizer.is_next_closing_brace() || self.tokenizer.is_on_last() {
