@@ -5,11 +5,11 @@
 //! 
 //! This can be used to parse partial json coming from a stream.
 
-use std::str::CharIndices;
+use std::{fmt::Display, str::CharIndices};
 
 /// Takes a partial JSOn string and returns a complete JSON string
 pub fn fix_json(partial_json: &str) -> JResult<String> {
-    if partial_json.len() == 0 {
+    if partial_json.is_empty() {
         return Ok("".to_string())
     }
     let tokenizer = JsonTokenizer::new(partial_json);
@@ -156,9 +156,9 @@ struct JsonParseTree<'a> {
     root: JsonTreeRoot<'a>,
 }
 
-impl<'a> JsonParseTree<'a> {
-    fn to_string(&self) -> String {
-        self.root.to_string()
+impl<'a> Display for JsonParseTree<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.root)
     }
 }
 
@@ -167,9 +167,9 @@ struct JsonTreeRoot<'a> {
     value: JsonValue<'a>,
 }
 
-impl<'a> JsonTreeRoot<'a> {
-    fn to_string(&self) -> String {
-        self.value.to_string()
+impl<'a> Display for JsonTreeRoot<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value)
     }
 }
 
@@ -180,11 +180,12 @@ enum JsonValue<'a> {
     Unit(JsonUnit<'a>),
 }
 
-impl<'a> JsonValue<'a> {
-    fn to_string(&self) -> String {
+impl<'a> Display for JsonValue<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             JsonValue::Unit(unit) => {
-                format!(
+                write!(
+                    f,
                     "{unit}{}",
                     if unit.starts_with("\"") && !unit.ends_with("\"") {
                         "\""
@@ -193,8 +194,8 @@ impl<'a> JsonValue<'a> {
                     }
                 )
             }
-            JsonValue::Object(object) => object.to_string(),
-            JsonValue::Array(array) => array.to_string(),
+            JsonValue::Object(object) => write!(f, "{object}"),
+            JsonValue::Array(array) => write!(f, "{array}"),
         }
     }
 }
@@ -204,9 +205,10 @@ struct JsonArray<'a> {
     members: Vec<JsonValue<'a>>,
 }
 
-impl<'a> JsonArray<'a> {
-    fn to_string(&self) -> String {
-        format!(
+impl<'a> Display for JsonArray<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "[{}]",
             self.members
                 .iter()
@@ -221,19 +223,20 @@ impl<'a> JsonArray<'a> {
 struct JsonObject<'a> {
     values: Vec<(JsonUnit<'a>, JsonValue<'a>)>,
 }
-
-impl<'a> JsonObject<'a> {
-    fn to_string(&self) -> String {
-        format!(
+impl<'a> Display for JsonObject<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "{{{}}}",
             self.values
                 .iter()
-                .map(|(key, value)| format!("{}: {}", key, value.to_string()))
+                .map(|(key, value)| format!("{}: {}", key, value))
                 .collect::<Vec<String>>()
                 .join(", ")
         )
     }
 }
+
 type JsonUnit<'a> = &'a str;
 
 struct JsonTokenizer<'a> {
@@ -251,7 +254,7 @@ impl<'a> JsonTokenizer<'a> {
     }
 
     fn span_source(&self, token: &JsonToken) -> &'a str {
-        return &self.source[token.span.start..token.span.end];
+        &self.source[token.span.start..token.span.end]
     }
 
     fn skip_whitespace_and_next(&mut self) -> Option<(usize, char)> {
@@ -284,13 +287,13 @@ impl<'a> JsonTokenizer<'a> {
             }
         }
         // todo: consider failure case?
-        return Some(JsonToken {
+        Some(JsonToken {
             kind: JsonTokenKind::Number,
             span: Span {
                 start: first_index,
                 end: last_index,
             },
-        });
+        })
     }
 
     fn is_next_closing_brace(&self) -> bool {
@@ -334,7 +337,7 @@ impl<'a> JsonTokenizer<'a> {
             // i need to consume the whole string
             let mut previous_char = None;
             let mut string_end_index = i + 1;
-            while let Some((i, str_char)) = self.char_indices.next() {
+            for (i, str_char) in self.char_indices.by_ref() {
                 string_end_index = i + 1;
                 if str_char == '"' {
                     if let Some('\\') = previous_char {
@@ -353,8 +356,7 @@ impl<'a> JsonTokenizer<'a> {
             });
         };
         // let's just assume it's a number if nothing else
-        let number = self.consume_number(i);
-        number
+        self.consume_number(i)
     }
 }
 
