@@ -9,3 +9,11 @@ This can be used to parse partial json coming from a stream.
 ```
 cargo add partial-json-fixer
 ```
+
+### Usage
+
+The `fix_json` function accepts a partial json string and returns a string which should be correctly parse-able JSON
+
+### Documentation
+
+[See documentation on docs.rs](https://docs.rs/partial-json-fixer/latest/partial_json_fixer/)
