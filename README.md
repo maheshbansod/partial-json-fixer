@@ -1,24 +1,25 @@
 
 # partial-json-fixer
 
-[crate: partial-json-fixer](https://crates.io/crates/partial-json-fixer)
-
-[Python package: partial-json-fixer](https://pypi.org/project/partial-json-fixer)
-![PyPI - Version](https://img.shields.io/pypi/v/partial-json-fixer)
-
 This project contains a zero dependency Rust crate to fix a partial JSON string.
 
 It also contains a python package partial-json-fixer which utilizes this Rust crate.
 
 ### Add dependency in a Python project
 
-```
+![PyPI - Version](https://img.shields.io/pypi/v/partial-json-fixer)
+
+[Python package: partial-json-fixer](https://pypi.org/project/partial-json-fixer)
+
+```sh
 pip install partial-json-fixer
 ```
 
 ### Add dependency in a Rust project
 
-```
+[crate: partial-json-fixer](https://crates.io/crates/partial-json-fixer)
+
+```sh
 cargo add partial-json-fixer
 ```
 
