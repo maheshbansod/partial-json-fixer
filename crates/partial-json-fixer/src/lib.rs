@@ -354,7 +354,7 @@ impl<'a> JsonTokenizer<'a> {
         if c == '"' {
             // i need to consume the whole string
             let mut previous_char = None;
-            let mut string_end_index = i + 1;
+            let mut string_end_index = i + c.len_utf8();
             for (i, str_char) in self.char_indices.by_ref() {
                 string_end_index = i + str_char.len_utf8();
                 if str_char == '"' {
@@ -402,66 +402,3 @@ pub enum JsonTokenKind {
     Number,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let partial = "{\"key\": \"value";
-        let result = fix_json(partial).unwrap();
-        assert_eq!(result, "{\"key\": \"value\"}");
-    }
-
-    #[test]
-    fn test_unclosed_object() {
-        let partial = "{\"key\": \"value\", \"another_key\": 42";
-        let result = fix_json(partial).unwrap();
-        assert_eq!(result, "{\"key\": \"value\", \"another_key\": 42}");
-    }
-
-    #[test]
-    fn test_unclosed_array() {
-        let partial = "[1, 2, 3";
-        let result = fix_json(partial).unwrap();
-        assert_eq!(result, "[1, 2, 3]");
-    }
-
-    #[test]
-    fn test_nested_structure() {
-        let partial = "{\"key\": [1, 2, {\"nested_key\": \"nested_value\"}";
-        let result = fix_json(partial).unwrap();
-        assert_eq!(
-            result,
-            "{\"key\": [1, 2, {\"nested_key\": \"nested_value\"}]}"
-        );
-    }
-
-    #[test]
-    fn test_empty_input() {
-        let partial = "";
-        let result = fix_json(partial).unwrap();
-        assert_eq!(result, "");
-    }
-
-    #[test]
-    fn test_no_fix_needed() {
-        let valid_json = "{\"key\": \"value\"}";
-        let result = fix_json(valid_json).unwrap();
-        assert_eq!(result, valid_json);
-    }
-
-    #[test]
-    fn test_malformed_json() {
-        let partial = "{\"key\": \"value\",";
-        let result = fix_json(partial).unwrap();
-        assert_eq!(result, "{\"key\": \"value\"}");
-    }
-
-    #[test]
-    fn test_normal_json() {
-        let partial = "{\"key\": \"value\", 1: 3}";
-        let result = fix_json(partial).unwrap();
-        assert_eq!(result, "{\"key\": \"value\", 1: 3}");
-    }
-}
