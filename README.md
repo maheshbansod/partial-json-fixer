@@ -1,6 +1,9 @@
 
 # partial-json-fixer
 
+![Crates.io MSRV](https://img.shields.io/crates/msrv/partial-json-fixer)
+![PyPI - Version](https://img.shields.io/pypi/v/partial-json-fixer)
+
 This project contains a zero dependency Rust crate to fix a partial JSON string.
 
 It also contains a python package partial-json-fixer which utilizes this Rust crate.
