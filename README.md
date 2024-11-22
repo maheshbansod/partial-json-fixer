@@ -1,7 +1,9 @@
 
 # partial-json-fixer
 
-![Crates.io MSRV](https://img.shields.io/crates/msrv/partial-json-fixer)
+[crate: partial-json-fixer](https://crates.io/crates/partial-json-fixer)
+
+[Python package: partial-json-fixer](https://pypi.org/project/partial-json-fixer)
 ![PyPI - Version](https://img.shields.io/pypi/v/partial-json-fixer)
 
 This project contains a zero dependency Rust crate to fix a partial JSON string.
@@ -24,7 +26,7 @@ cargo add partial-json-fixer
 
 ### Python
 
-```
+```python
 from partial_json_fixer import fix_json
 
 assert fix_json("{\"key\": \"value") == "{\"key\": \"value\"}"
@@ -32,8 +34,8 @@ assert fix_json("{\"key\": \"value") == "{\"key\": \"value\"}"
 
 ### Rust
 
-```
+```rust
 use partial_json_fixer::fix_json
 
-assert_eq!(fix_json("{\"key\": \"value"), "{\"key\": \"value\"}")
+assert_eq!(fix_json("{\"key\": \"value").unwrap(), "{\"key\": \"value\"}")
 ```
