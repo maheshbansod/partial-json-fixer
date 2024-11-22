@@ -9,4 +9,5 @@ name = "partial_json_fixer"
 crate-type = ["cdylib"]
 
 [dependencies]
+original_partial_json_fixer = { package = "partial-json-fixer",  path = "../../crates/partial-json-fixer" }
 pyo3 = "0.22.0"
