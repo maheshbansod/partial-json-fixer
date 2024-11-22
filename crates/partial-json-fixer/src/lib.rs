@@ -114,7 +114,7 @@ impl<'a> JsonParser<'a> {
             self.tokenizer.next().ok_or(JsonError::UnexpectedEnd)?;
             let value = self.parse_value();
             if value.is_err() {
-                // TODO: push with empty value
+                values.push((key, JsonValue::Null));
                 break;
             }
             let (_errors, value) = value.unwrap();
@@ -196,6 +196,7 @@ enum JsonValue<'a> {
     Array(JsonArray<'a>),
     Object(JsonObject<'a>),
     Unit(JsonUnit<'a>),
+    Null,
 }
 
 impl<'a> Display for JsonValue<'a> {
@@ -214,6 +215,7 @@ impl<'a> Display for JsonValue<'a> {
             }
             JsonValue::Object(object) => write!(f, "{object}"),
             JsonValue::Array(array) => write!(f, "{array}"),
+            JsonValue::Null => write!(f, "null")
         }
     }
 }

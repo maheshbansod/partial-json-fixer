@@ -22,6 +22,13 @@ fn test_unclosed_array_with_mixed_types() {
 }
 
 #[test]
+fn test_incomplete_object() {
+    let partial = "{\"key\":}";
+    let result = fix_json(partial).unwrap();
+    assert_eq!(result, "{\"key\": null}");
+}
+
+#[test]
 fn test_incomplete_nested_array() {
     let partial = "[[1, 2], [3, 4]";
     let result = fix_json(partial).unwrap();
