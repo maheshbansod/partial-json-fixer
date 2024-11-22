@@ -36,8 +36,15 @@ fn test_incomplete_object() {
 }
 
 #[test]
-fn test_incomplete_object2() {
+fn test_incomplete_object_string_start() {
     let partial = "{\"key\":\"";
+    let result = fix_json(partial).unwrap();
+    assert_eq!(result, "{\"key\": \"\"}");
+}
+
+#[test]
+fn test_incomplete_object_trailing_comma() {
+    let partial = "{\"key\":\"\",";
     let result = fix_json(partial).unwrap();
     assert_eq!(result, "{\"key\": \"\"}");
 }
