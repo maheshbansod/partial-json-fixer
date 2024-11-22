@@ -207,7 +207,7 @@ impl<'a> Display for JsonValue<'a> {
                 write!(
                     f,
                     "{unit}{}",
-                    if unit.starts_with("\"") && !unit.ends_with("\"") {
+                    if unit.starts_with("\"") && (!unit.ends_with("\"") || unit.len() == 1) {
                         "\""
                     } else {
                         ""

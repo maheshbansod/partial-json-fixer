@@ -36,6 +36,13 @@ fn test_incomplete_object() {
 }
 
 #[test]
+fn test_incomplete_object2() {
+    let partial = "{\"key\":\"";
+    let result = fix_json(partial).unwrap();
+    assert_eq!(result, "{\"key\": \"\"}");
+}
+
+#[test]
 fn test_incomplete_nested_array() {
     let partial = "[[1, 2], [3, 4]";
     let result = fix_json(partial).unwrap();
