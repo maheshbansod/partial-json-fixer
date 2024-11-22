@@ -42,6 +42,7 @@ impl<'a> JsonParser<'a> {
         let token = self.tokenizer.next().ok_or(JsonError::UnexpectedEnd)?;
 
         match token.kind {
+            JsonTokenKind::Null |
             JsonTokenKind::String | JsonTokenKind::Number => {
                 Ok((vec![], JsonValue::Unit(self.tokenizer.span_source(&token))))
             }
@@ -290,7 +291,7 @@ impl<'a> JsonTokenizer<'a> {
         v
     }
 
-    fn consume_number(&mut self, first_index: usize) -> Option<JsonToken> {
+    fn consume_number_or_null(&mut self, first_index: usize) -> Option<JsonToken> {
         let mut it_clone = self.char_indices.clone();
         let mut last_index = first_index;
         loop {
@@ -376,7 +377,7 @@ impl<'a> JsonTokenizer<'a> {
             });
         };
         // let's just assume it's a number if nothing else
-        self.consume_number(i)
+        self.consume_number_or_null(i)
     }
 }
 
@@ -402,5 +403,6 @@ pub enum JsonTokenKind {
     Colon,
     String,
     Number,
+    Null,
 }
 
