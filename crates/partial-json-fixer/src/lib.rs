@@ -1,8 +1,8 @@
 //! Partial JSON fixer
-//! 
+//!
 //! This is a zero dependency partial json fixer.
 //! It is very lenient, and will accept some erroneous JSON too. For example, {key: "value"} would be valid.
-//! 
+//!
 //! This can be used to parse partial json coming from a stream.
 
 use std::{fmt::Display, str::CharIndices};
@@ -10,7 +10,7 @@ use std::{fmt::Display, str::CharIndices};
 /// Takes a partial JSOn string and returns a complete JSON string
 pub fn fix_json(partial_json: &str) -> JResult<String> {
     if partial_json.is_empty() {
-        return Ok("".to_string())
+        return Ok("".to_string());
     }
     let tokenizer = JsonTokenizer::new(partial_json);
     let parser = JsonParser::new(tokenizer);
@@ -28,17 +28,17 @@ impl<'a> JsonParser<'a> {
         Self { tokenizer }
     }
 
-    fn parse(mut self) -> JResult< JsonParseTree<'a>> {
+    fn parse(mut self) -> JResult<JsonParseTree<'a>> {
         let root = self.parse_root()?;
         Ok(JsonParseTree { root })
     }
 
-    fn parse_root(&mut self) -> JResult< JsonTreeRoot<'a>> {
+    fn parse_root(&mut self) -> JResult<JsonTreeRoot<'a>> {
         let (_, value) = self.parse_value()?;
         Ok(JsonTreeRoot { value })
     }
 
-    fn parse_value(&mut self) -> JResult< (Vec<JsonError>, JsonValue<'a>)> {
+    fn parse_value(&mut self) -> JResult<(Vec<JsonError>, JsonValue<'a>)> {
         let token = self.tokenizer.next().ok_or(JsonError::UnexpectedEnd)?;
 
         match token.kind {
@@ -59,7 +59,7 @@ impl<'a> JsonParser<'a> {
         }
     }
 
-    fn parse_unit(&mut self) -> JResult< JsonUnit<'a>> {
+    fn parse_unit(&mut self) -> JResult<JsonUnit<'a>> {
         let t = self.tokenizer.next().ok_or(JsonError::UnexpectedEnd)?;
         match t.kind {
             JsonTokenKind::String | JsonTokenKind::Number => Ok(self.tokenizer.span_source(&t)),
@@ -147,6 +147,26 @@ pub enum JsonError {
         got: JsonToken,
         expected: Option<JsonTokenKind>,
     },
+}
+impl std::error::Error for JsonError {}
+
+impl Display for JsonError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            JsonError::UnexpectedEnd => write!(f, "Unexpected end of input"),
+            JsonError::ExpectedToken { got, expected } => {
+                if let Some(expected) = expected {
+                    write!(
+                        f,
+                        "Expected token {:?} at char {}, got {:?}",
+                        expected, got.span.start, got.kind
+                    )
+                } else {
+                    write!(f, "Unexpected token {:?} at char {}", got.kind, got.span.start)
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -411,7 +431,10 @@ mod tests {
     fn test_nested_structure() {
         let partial = "{\"key\": [1, 2, {\"nested_key\": \"nested_value\"}";
         let result = fix_json(partial).unwrap();
-        assert_eq!(result, "{\"key\": [1, 2, {\"nested_key\": \"nested_value\"}]}");
+        assert_eq!(
+            result,
+            "{\"key\": [1, 2, {\"nested_key\": \"nested_value\"}]}"
+        );
     }
 
     #[test]
