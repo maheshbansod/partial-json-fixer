@@ -356,7 +356,7 @@ impl<'a> JsonTokenizer<'a> {
             let mut previous_char = None;
             let mut string_end_index = i + 1;
             for (i, str_char) in self.char_indices.by_ref() {
-                string_end_index = i + 1;
+                string_end_index = i + str_char.len_utf8();
                 if str_char == '"' {
                     if let Some('\\') = previous_char {
                     } else {
