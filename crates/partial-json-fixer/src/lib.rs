@@ -53,14 +53,19 @@ impl<'a> JsonParser<'a> {
 
     fn token_as_unit(&self, token: &JsonToken) -> JsonUnit<'a> {
         let source = self.tokenizer.span_source(&token);
-        if !source.starts_with("\"") && !JsonParser::is_keyword(source) && source.parse::<isize>().is_err() {
-            return "null";
+        if source.starts_with("\"") {
+            return JsonUnit::String(source.trim_matches('"'));
         }
-        return source;
-    }
-
-    fn is_keyword(s: &str) -> bool {
-        matches!(s, "null"|"true"|"false")
+        if source == "true" {
+            return JsonUnit::True;
+        }
+        if source == "false" {
+            return JsonUnit::False;
+        }
+        if source.parse::<isize>().is_ok() {
+            return JsonUnit::Number(source);
+        }
+        return JsonUnit::Null;
     }
 
     fn parse_unit(&mut self) -> JResult<JsonUnit<'a>> {
@@ -192,15 +197,7 @@ impl<'a> Display for JsonValue<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             JsonValue::Unit(unit) => {
-                write!(
-                    f,
-                    "{unit}{}",
-                    if unit.starts_with("\"") && (!unit.ends_with("\"") || unit.len() == 1) {
-                        "\""
-                    } else {
-                        ""
-                    }
-                )
+                write!(f, "{unit}")
             }
             JsonValue::Object(object) => write!(f, "{object}"),
             JsonValue::Array(array) => write!(f, "{array}"),
@@ -246,7 +243,26 @@ impl<'a> Display for JsonObject<'a> {
     }
 }
 
-type JsonUnit<'a> = &'a str;
+#[derive(Debug)]
+pub enum JsonUnit<'a> {
+    Null,
+    Number(&'a str),
+    String(&'a str),
+    True,
+    False,
+}
+
+impl<'a> Display for JsonUnit<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::True => write!(f, "true"),
+            Self::False => write!(f, "false"),
+            Self::Null => write!(f, "null"),
+            Self::Number(n) => write!(f, "{n}"),
+            Self::String(s) => write!(f, "\"{s}\""),
+        }
+    }
+}
 
 struct JsonTokenizer<'a> {
     source: &'a str,
