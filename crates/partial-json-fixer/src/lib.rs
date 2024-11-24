@@ -8,15 +8,12 @@
 use std::{fmt::Display, str::CharIndices};
 
 /// Takes a partial JSON string and returns a complete JSON string
-pub fn fix_json(partial_json: &str) -> JResult<String> {
-    if partial_json.is_empty() {
-        return Ok("".to_string());
-    }
+pub fn fix_json(partial_json: &str) -> JResult<JsonValue> {
     let tokenizer = JsonTokenizer::new(partial_json);
     let parser = JsonParser::new(tokenizer);
 
     let value = parser.parse()?;
-    Ok(value.to_string())
+    Ok(value)
 }
 
 struct JsonParser<'a> {
@@ -28,14 +25,9 @@ impl<'a> JsonParser<'a> {
         Self { tokenizer }
     }
 
-    fn parse(mut self) -> JResult<JsonParseTree<'a>> {
-        let root = self.parse_root()?;
-        Ok(JsonParseTree { root })
-    }
-
-    fn parse_root(&mut self) -> JResult<JsonTreeRoot<'a>> {
-        let (_, value) = self.parse_value()?;
-        Ok(JsonTreeRoot { value })
+    fn parse(mut self) -> JResult<JsonValue<'a>> {
+        let (_errors, value) = self.parse_value()?;
+        Ok(value)
     }
 
     fn parse_value(&mut self) -> JResult<(Vec<JsonError>, JsonValue<'a>)> {
@@ -171,29 +163,7 @@ impl Display for JsonError {
 }
 
 #[derive(Debug)]
-struct JsonParseTree<'a> {
-    root: JsonTreeRoot<'a>,
-}
-
-impl<'a> Display for JsonParseTree<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.root)
-    }
-}
-
-#[derive(Debug)]
-struct JsonTreeRoot<'a> {
-    value: JsonValue<'a>,
-}
-
-impl<'a> Display for JsonTreeRoot<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.value)
-    }
-}
-
-#[derive(Debug)]
-enum JsonValue<'a> {
+pub enum JsonValue<'a> {
     Array(JsonArray<'a>),
     Object(JsonObject<'a>),
     Unit(JsonUnit<'a>),
@@ -222,7 +192,7 @@ impl<'a> Display for JsonValue<'a> {
 }
 
 #[derive(Debug)]
-struct JsonArray<'a> {
+pub struct JsonArray<'a> {
     members: Vec<JsonValue<'a>>,
 }
 
@@ -241,7 +211,7 @@ impl<'a> Display for JsonArray<'a> {
 }
 
 #[derive(Debug)]
-struct JsonObject<'a> {
+pub struct JsonObject<'a> {
     values: Vec<(JsonUnit<'a>, JsonValue<'a>)>,
 }
 impl<'a> Display for JsonObject<'a> {
