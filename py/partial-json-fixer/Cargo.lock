@@ -53,7 +53,7 @@ version = "0.3.1"
 
 [[package]]
 name = "partial-json-fixer-py"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "partial-json-fixer",
  "pyo3",
