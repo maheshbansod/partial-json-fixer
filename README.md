@@ -30,7 +30,7 @@ cargo add partial-json-fixer
 ```python
 from partial_json_fixer import fix_json
 
-assert fix_json("{\"key\": \"value") == "{\"key\": \"value\"}"
+assert fix_json_string("{\"key\": \"value") == "{\"key\": \"value\"}"
 ```
 
 ### Rust
@@ -38,5 +38,5 @@ assert fix_json("{\"key\": \"value") == "{\"key\": \"value\"}"
 ```rust
 use partial_json_fixer::fix_json
 
-assert_eq!(fix_json("{\"key\": \"value").unwrap(), "{\"key\": \"value\"}")
+assert_eq!(fix_json("{\"key\": \"value").unwrap().to_string(), "{\"key\": \"value\"}")
 ```
