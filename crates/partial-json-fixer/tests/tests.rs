@@ -191,4 +191,9 @@ fn boolean() {
     assert_eq!(result, "{\"key\": true}");
 }
 
-
+#[test]
+fn multiple_keys() {
+    let partial = "{\"key\": true, \"hey\"";
+    let result = fix_json_to_string(partial).unwrap();
+    assert_eq!(result, "{\"key\": true, \"hey\": null}");
+}

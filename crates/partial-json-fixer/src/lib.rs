@@ -115,7 +115,10 @@ impl<'a> JsonParser<'a> {
             }
             let key = key.unwrap();
             // parse colon
-            self.tokenizer.next().ok_or(JsonError::UnexpectedEnd)?;
+            if self.tokenizer.next().is_none() {
+                values.push((key, JsonValue::Null));
+                break;
+            }
             let value = self.parse_value();
             if value.is_err() {
                 values.push((key, JsonValue::Null));
