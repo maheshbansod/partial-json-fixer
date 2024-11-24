@@ -7,7 +7,7 @@
 
 use std::{fmt::Display, str::CharIndices};
 
-/// Takes a partial JSOn string and returns a complete JSON string
+/// Takes a partial JSON string and returns a complete JSON string
 pub fn fix_json(partial_json: &str) -> JResult<String> {
     if partial_json.is_empty() {
         return Ok("".to_string());
