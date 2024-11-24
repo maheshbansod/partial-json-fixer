@@ -179,7 +179,16 @@ fn test_utf8_characters() {
 
 #[test]
 fn incomplete_keyword() {
-    let partial = "{\"key\": nu";
+    let partial = "{\"key\": mu";
     let result = fix_json_to_string(partial).unwrap();
     assert_eq!(result, "{\"key\": null}");
 }
+
+#[test]
+fn boolean() {
+    let partial = "{\"key\": true";
+    let result = fix_json_to_string(partial).unwrap();
+    assert_eq!(result, "{\"key\": true}");
+}
+
+

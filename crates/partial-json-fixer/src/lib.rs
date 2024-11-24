@@ -53,10 +53,14 @@ impl<'a> JsonParser<'a> {
 
     fn token_as_unit(&self, token: &JsonToken) -> JsonUnit<'a> {
         let source = self.tokenizer.span_source(&token);
-        if source != "null" && !source.starts_with("\"") && source.parse::<isize>().is_err() {
+        if !source.starts_with("\"") && !JsonParser::is_keyword(source) && source.parse::<isize>().is_err() {
             return "null";
         }
         return source;
+    }
+
+    fn is_keyword(s: &str) -> bool {
+        matches!(s, "null"|"true"|"false")
     }
 
     fn parse_unit(&mut self) -> JResult<JsonUnit<'a>> {
