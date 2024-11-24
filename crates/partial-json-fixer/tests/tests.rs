@@ -176,3 +176,10 @@ fn test_utf8_characters() {
     let result = fix_json_to_string(partial).unwrap();
     assert_eq!(result, "{\"key\": \"value with emoji \u{1f643}\"}");
 }
+
+#[test]
+fn incomplete_keyword() {
+    let partial = "{\"key\": nu";
+    let result = fix_json_to_string(partial).unwrap();
+    assert_eq!(result, "{\"key\": null}");
+}

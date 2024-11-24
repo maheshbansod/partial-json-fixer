@@ -34,9 +34,8 @@ impl<'a> JsonParser<'a> {
         let token = self.tokenizer.next().ok_or(JsonError::UnexpectedEnd)?;
 
         match token.kind {
-            JsonTokenKind::Null |
-            JsonTokenKind::String | JsonTokenKind::Number => {
-                Ok((vec![], JsonValue::Unit(self.tokenizer.span_source(&token))))
+            JsonTokenKind::Null | JsonTokenKind::String | JsonTokenKind::Number => {
+                Ok((vec![], JsonValue::Unit(self.token_as_unit(&token))))
             }
             JsonTokenKind::OpeningBrace => Ok((vec![], JsonValue::Object(self.parse_object()?))),
             JsonTokenKind::OpeningSquareBracket => {
@@ -52,10 +51,18 @@ impl<'a> JsonParser<'a> {
         }
     }
 
+    fn token_as_unit(&self, token: &JsonToken) -> JsonUnit<'a> {
+        let source = self.tokenizer.span_source(&token);
+        if source != "null" && !source.starts_with("\"") && source.parse::<isize>().is_err() {
+            return "null";
+        }
+        return source;
+    }
+
     fn parse_unit(&mut self) -> JResult<JsonUnit<'a>> {
         let t = self.tokenizer.next().ok_or(JsonError::UnexpectedEnd)?;
         match t.kind {
-            JsonTokenKind::String | JsonTokenKind::Number => Ok(self.tokenizer.span_source(&t)),
+            JsonTokenKind::String | JsonTokenKind::Number => Ok(self.token_as_unit(&t)),
             _ => Err(JsonError::ExpectedToken {
                 got: t,
                 expected: None,
@@ -155,7 +162,11 @@ impl Display for JsonError {
                         expected, got.span.start, got.kind
                     )
                 } else {
-                    write!(f, "Unexpected token {:?} at char {}", got.kind, got.span.start)
+                    write!(
+                        f,
+                        "Unexpected token {:?} at char {}",
+                        got.kind, got.span.start
+                    )
                 }
             }
         }
@@ -186,7 +197,7 @@ impl<'a> Display for JsonValue<'a> {
             }
             JsonValue::Object(object) => write!(f, "{object}"),
             JsonValue::Array(array) => write!(f, "{array}"),
-            JsonValue::Null => write!(f, "null")
+            JsonValue::Null => write!(f, "null"),
         }
     }
 }
@@ -375,4 +386,3 @@ pub enum JsonTokenKind {
     Number,
     Null,
 }
-
