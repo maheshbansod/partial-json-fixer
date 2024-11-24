@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use original_partial_json_fixer::{self, JsonArray, JsonObject, JsonValue};
+use original_partial_json_fixer::{self, JsonArray, JsonObject, JsonUnit, JsonValue};
 use pyo3::{
     exceptions::PyValueError,
     prelude::*,
-    types::{PyList, PyNone},
+    types::{PyBool, PyList, PyNone},
 };
 
 /// Fixes a partial json string to return a complete json string
@@ -45,22 +45,20 @@ impl<'a> IntoPy<PyObject> for RJsonValue<'a> {
         }
     }
 }
-fn unit_to_str(unit: &str) -> &str {
-    if unit.starts_with("\"") {
-        let s = unit.trim_matches('"');
-        s
-    } else {
-        unit
+fn unit_to_str(unit: JsonUnit) -> &str {
+    match unit {
+        JsonUnit::Number(n) => n,
+        JsonUnit::String(s) => s,
+        _ => panic!("key of an object can only be string or number")
     }
 }
-fn unit_to_py(unit: &str, py: Python<'_>) -> PyObject {
-    if unit.starts_with("\"") {
-        let s = unit.trim_matches('"');
-        s.into_py(py)
-    } else if let Ok(unit) = unit.parse::<i32>() {
-        unit.into_py(py)
-    } else {
-        PyNone::get_bound(py).into_py(py)
+fn unit_to_py(unit: JsonUnit<'_>, py: Python<'_>) -> PyObject {
+    match unit {
+        JsonUnit::Null => PyNone::get_bound(py).into_py(py),
+        JsonUnit::True => PyBool::new_bound(py, true).into_py(py),
+        JsonUnit::False => PyBool::new_bound(py, false).into_py(py),
+        JsonUnit::String(s) => s.into_py(py),
+        JsonUnit::Number(n) => n.into_py(py)
     }
 }
 
