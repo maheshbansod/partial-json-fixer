@@ -208,7 +208,7 @@ impl<'a> Display for JsonValue<'a> {
 
 #[derive(Debug)]
 pub struct JsonArray<'a> {
-    members: Vec<JsonValue<'a>>,
+    pub members: Vec<JsonValue<'a>>,
 }
 
 impl<'a> Display for JsonArray<'a> {
@@ -227,7 +227,7 @@ impl<'a> Display for JsonArray<'a> {
 
 #[derive(Debug)]
 pub struct JsonObject<'a> {
-    values: Vec<(JsonUnit<'a>, JsonValue<'a>)>,
+    pub values: Vec<(JsonUnit<'a>, JsonValue<'a>)>,
 }
 impl<'a> Display for JsonObject<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
