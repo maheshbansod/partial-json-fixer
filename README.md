@@ -28,15 +28,17 @@ cargo add partial-json-fixer
 ### Python
 
 ```python
-from partial_json_fixer import fix_json
+from partial_json_fixer import fix_json_string
 
 assert fix_json_string("{\"key\": \"value") == "{\"key\": \"value\"}"
 ```
 
 ### Rust
 
+See [tests](./crates/partial-json-fixer/tests/tests.rs) for more examples
+
 ```rust
 use partial_json_fixer::fix_json
 
-assert_eq!(fix_json("{\"key\": \"value").unwrap().to_string(), "{\"key\": \"value\"}")
+assert_eq!(fix_json("{\"key\": \"value"), "{\"key\": \"value\"}")
 ```

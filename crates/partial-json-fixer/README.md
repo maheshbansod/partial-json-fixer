@@ -16,7 +16,7 @@ cargo add partial-json-fixer
 
 ### Usage
 
-The `fix_json_object` function accepts a partial json string and returns a `JsonValue`.
+The `fix_json` function accepts a partial json string and returns a complete json string.
 
 ### Documentation
 
