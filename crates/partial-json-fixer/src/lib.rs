@@ -7,13 +7,130 @@
 
 use std::{fmt::Display, str::CharIndices};
 
-/// Takes a partial JSON string and returns a complete JSON string
-pub fn fix_json(partial_json: &str) -> JResult<JsonValue> {
+/// Takes a partial JSON string, kinda parses it and returns a complete JSON string
+pub fn fix_json_parse(partial_json: &str) -> JResult<JsonValue> {
     let tokenizer = JsonTokenizer::new(partial_json);
     let parser = JsonParser::new(tokenizer);
 
     let value = parser.parse()?;
     Ok(value)
+}
+
+/// Takes a partial JSON string, kinda parses it and returns a complete JSON string
+pub fn fix_json(partial_json: &str) -> String {
+    enum Wrapper {
+        Brace,
+        SquareBracket,
+        Quote,
+        Escape,
+        ObjectKey,
+        ObjectValue,
+    }
+    let chars = partial_json.chars();
+    let mut wrappers = vec![];
+    for c in chars {
+        match wrappers.last() {
+            Some(Wrapper::Quote) => {
+                if c == '"' {
+                    wrappers.pop();
+                } else if c == '\\' {
+                    wrappers.push(Wrapper::Escape);
+                }
+            }
+            Some(Wrapper::Escape) => {
+                wrappers.pop(); // get out of escape mode 
+            }
+            _ => {
+                match c {
+                    '{' => {
+                        wrappers.push(Wrapper::Brace);
+                    }
+                    '}' => {
+                        wrappers.pop(); // we assume it's correct JSON
+                        if matches!(wrappers.last(), Some(Wrapper::ObjectValue)) {
+                            wrappers.pop();
+                        }
+                    }
+                    '[' => {
+                        wrappers.push(Wrapper::SquareBracket);
+                    }
+                    ']' => {
+                        wrappers.pop();
+                        if matches!(wrappers.last(), Some(Wrapper::ObjectValue)) {
+                            wrappers.pop();
+                        }
+                    }
+                    '"' => {
+                        if matches!(wrappers.last(), Some(Wrapper::Brace)) {
+                            wrappers.push(Wrapper::ObjectKey);
+                        } else if matches!(wrappers.last(), Some(Wrapper::ObjectValue)) {
+                            wrappers.pop();
+                        }
+                        wrappers.push(Wrapper::Quote);
+                    },
+                    ':' => {
+                        wrappers.pop(); // pop ObjectKey
+                        wrappers.push(Wrapper::ObjectValue);
+                    },
+                    ',' => {
+                        if matches!(wrappers.last(), Some(Wrapper::ObjectValue)) {
+                            wrappers.pop();
+                        }
+                    },
+                    w if w.is_whitespace() => {},
+                    _ => {
+                        // non whitespace
+                        if matches!(wrappers.last(), Some(Wrapper::ObjectValue)) {
+                            wrappers.pop();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let end_index = if partial_json.trim_end().ends_with(',') {
+        partial_json.rfind(',').unwrap()
+    } else {
+        partial_json.len()
+    };
+
+    let mut final_json = partial_json[0..end_index].to_string();
+    while let Some(wrapper) = wrappers.pop() {
+        match wrapper {
+            Wrapper::Brace => {
+                final_json.push('}');
+                if matches!(wrappers.last(), Some(Wrapper::ObjectValue)) {
+                    wrappers.pop();
+                }
+            },
+            Wrapper::SquareBracket => {
+                final_json.push(']');
+                if matches!(wrappers.last(), Some(Wrapper::ObjectValue)) {
+                    wrappers.pop();
+                }
+            },
+            Wrapper::Quote => {
+                final_json.push('"');
+                if matches!(wrappers.last(), Some(Wrapper::ObjectValue)) {
+                    wrappers.pop();
+                }
+            },
+            Wrapper::Escape => {
+                final_json.push('\\');
+            },
+            Wrapper::ObjectKey => {
+                final_json.push_str(": null");
+            },
+            Wrapper::ObjectValue => {
+                final_json.push_str(" null");
+            },
+        }
+    }
+
+    // todo: remove traiiling comma
+
+    final_json
 }
 
 struct JsonParser<'a> {
