@@ -49,11 +49,11 @@ checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 
 [[package]]
 name = "partial-json-fixer"
-version = "0.4.2"
+version = "0.5.2"
 
 [[package]]
 name = "partial-json-fixer-py"
-version = "0.4.1"
+version = "0.5.1"
 dependencies = [
  "partial-json-fixer",
  "pyo3",
