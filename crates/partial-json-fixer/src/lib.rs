@@ -7,7 +7,9 @@
 
 use std::{fmt::Display, str::CharIndices};
 
-/// Takes a partial JSON string, kinda parses it and returns a complete JSON string
+/// Takes a partial JSON string, kinda parses it and returns a complete JSON object
+/// The JSON is tokenized and parsed. It can then be converted to a string with `.to_string()`
+/// method
 pub fn fix_json_parse(partial_json: &str) -> JResult<JsonValue> {
     let tokenizer = JsonTokenizer::new(partial_json);
     let parser = JsonParser::new(tokenizer);
@@ -16,7 +18,11 @@ pub fn fix_json_parse(partial_json: &str) -> JResult<JsonValue> {
     Ok(value)
 }
 
-/// Takes a partial JSON string, kinda parses it and returns a complete JSON string
+/// Takes a partial JSON string, kinda parses it and returns a complete JSON string.
+/// This function keeps the JSON as a string, goes through it and analyzes the brackets, strings,
+/// etc, to determine the missing stuff, and adds it.
+/// This approach is likely faster than the parsing appraoch (TODO: benchmmark maybe)
+/// It's assumed that the given JSON would **always** be a valid incomplete JSON.
 pub fn fix_json(partial_json: &str) -> String {
     enum Wrapper {
         Brace,
