@@ -349,7 +349,9 @@ impl<'a> JsonParser<'a> {
         if source == "false" {
             return JsonUnit::False;
         }
-        if source.parse::<isize>().is_ok() {
+        // JsonUnit::Number keeps the raw slice, so anything matching the JSON
+        // number grammar round-trips textually — no numeric conversion needed.
+        if is_valid_json_number(source) {
             return JsonUnit::Number(source);
         }
         JsonUnit::Null
@@ -588,7 +590,7 @@ impl<'a> JsonTokenizer<'a> {
         loop {
             if let Some((i, c)) = it_clone.next() {
                 last_index = i;
-                if !c.is_alphanumeric() {
+                if !c.is_alphanumeric() && !matches!(c, '.' | '+' | '-') {
                     break;
                 }
                 self.char_indices.next();
