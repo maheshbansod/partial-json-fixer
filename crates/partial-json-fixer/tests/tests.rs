@@ -351,6 +351,59 @@ mod always_parseable {
     }
 }
 
+mod escaped_backslash {
+    // https://github.com/maheshbansod/partial-json-fixer/issues/5
+    use partial_json_fixer::fix_json_parse;
+
+    fn object_member_text(input: &str) -> String {
+        object(input).values[0].1.to_string()
+    }
+
+    fn object(input: &str) -> partial_json_fixer::JsonObject<'_> {
+        match fix_json_parse(input).unwrap() {
+            partial_json_fixer::JsonValue::Object(obj) => obj,
+            other => panic!("expected an object for {input:?}, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn closing_quote_after_escaped_backslash_closes_string() {
+        assert_eq!(object_member_text(r#"{"path": "C:\\"}"#), "\"C:\\\\\"");
+    }
+
+    #[test]
+    fn second_member_survives_escaped_backslash() {
+        let value = fix_json_parse(r#"{"a": "x\\", "b": 1}"#).unwrap();
+        assert_eq!(value.to_string(), r#"{"a": "x\\", "b": 1}"#);
+    }
+
+    #[test]
+    fn regular_escaped_quotes_still_work() {
+        assert_eq!(
+            object_member_text(r#"{"s": "a\"b"}"#),
+            "\"a\\\"b\"",
+            "value text should be a\"b"
+        );
+    }
+
+    #[test]
+    fn odd_backslash_count_before_quote_escapes_it() {
+        // `x\\\""` = escaped backslash + escaped quote + closing quote, so the
+        // string stays open through the escaped quote and both members parse.
+        let obj = object(r#"{"s": "x\\\"", "b": 1}"#);
+        assert_eq!(obj.values.len(), 2);
+        assert_eq!(obj.values[0].1.to_string(), "\"x\\\\\\\"\"");
+    }
+
+    #[test]
+    fn even_backslash_count_before_quote_closes_string() {
+        for input in [r#"{"s": "x\\\\", "b": 1}"#, r#"{"s": "x\\\\\\", "b": 1}"#] {
+            let obj = object(input);
+            assert_eq!(obj.values.len(), 2, "input {input:?}");
+        }
+    }
+}
+
 mod parse_numbers {
     // https://github.com/maheshbansod/partial-json-fixer/issues/3
     use partial_json_fixer::{fix_json_parse, JsonUnit};
