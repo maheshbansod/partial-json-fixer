@@ -185,3 +185,59 @@ fn multiple_keys() {
     let result = fix_json_to_string(partial).unwrap();
     assert_eq!(result, "{\"key\": true, \"hey\": null}");
 }
+
+#[test]
+fn test_comma_inside_unterminated_string_value_preserved() {
+    // https://github.com/maheshbansod/partial-json-fixer/issues/2
+    let partial = "{\"msg\": \"hello, ";
+    let result = fix_json_to_string(partial).unwrap();
+    assert_eq!(result, "{\"msg\": \"hello, \"}");
+}
+
+#[test]
+fn test_comma_at_end_of_unterminated_string_value_preserved() {
+    // https://github.com/maheshbansod/partial-json-fixer/issues/2
+    let partial = "{\"k\": \"v\", \"m\": \"end,";
+    let result = fix_json_to_string(partial).unwrap();
+    assert_eq!(result, "{\"k\": \"v\", \"m\": \"end,\"}");
+}
+
+#[test]
+fn test_comma_inside_unterminated_string_key_preserved() {
+    // https://github.com/maheshbansod/partial-json-fixer/issues/2
+    let partial = "{\"a, ";
+    let result = fix_json_to_string(partial).unwrap();
+    assert_eq!(result, "{\"a, \": null}");
+}
+
+#[test]
+fn test_comma_inside_unterminated_array_string_preserved() {
+    // https://github.com/maheshbansod/partial-json-fixer/issues/2
+    let partial = "[\"a, b";
+    let result = fix_json_to_string(partial).unwrap();
+    assert_eq!(result, "[\"a, b\"]");
+}
+
+#[test]
+fn test_structural_trailing_comma_in_object_still_stripped() {
+    // https://github.com/maheshbansod/partial-json-fixer/issues/2
+    let partial = "{\"a\": 1, ";
+    let result = fix_json_to_string(partial).unwrap();
+    assert_eq!(result, "{\"a\": 1}");
+}
+
+#[test]
+fn test_structural_trailing_comma_in_array_still_stripped() {
+    // https://github.com/maheshbansod/partial-json-fixer/issues/2
+    let partial = "[1, 2, ";
+    let result = fix_json_to_string(partial).unwrap();
+    assert_eq!(result, "[1, 2]");
+}
+
+#[test]
+fn test_structural_trailing_comma_after_string_still_stripped() {
+    // https://github.com/maheshbansod/partial-json-fixer/issues/2
+    let partial = "{\"a\": \"x\", ";
+    let result = fix_json_to_string(partial).unwrap();
+    assert_eq!(result, "{\"a\": \"x\"}");
+}

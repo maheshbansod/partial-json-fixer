@@ -1,10 +1,10 @@
-use original_partial_json_fixer;
+use original_partial_json_fixer::fix_json;
 use pyo3::prelude::*;
 
 /// Fixes a partial json string to return a complete json string
 #[pyfunction]
 fn fix_json_string(partial_json: &str) -> PyResult<String> {
-    Ok(original_partial_json_fixer::fix_json(partial_json))
+    Ok(fix_json(partial_json))
 }
 
 /// A Python module implemented in Rust.

@@ -10,7 +10,7 @@ use std::{fmt::Display, str::CharIndices};
 /// Takes a partial JSON string, kinda parses it and returns a complete JSON object
 /// The JSON is tokenized and parsed. It can then be converted to a string with `.to_string()`
 /// method
-pub fn fix_json_parse(partial_json: &str) -> JResult<JsonValue> {
+pub fn fix_json_parse(partial_json: &str) -> JResult<JsonValue<'_>> {
     let tokenizer = JsonTokenizer::new(partial_json);
     let parser = JsonParser::new(tokenizer);
 
@@ -95,7 +95,16 @@ pub fn fix_json(partial_json: &str) -> String {
         }
     }
 
-    let end_index = if partial_json.trim_end().ends_with(',') {
+    // A trailing comma is only structural if it sits outside any string.
+    // If the input ends inside an unterminated string, the final comma is
+    // string content and must be preserved. Quote and Escape can only ever
+    // appear at the top of the stack.
+    let ends_inside_string = matches!(
+        wrappers.last(),
+        Some(Wrapper::Quote | Wrapper::Escape)
+    );
+
+    let end_index = if !ends_inside_string && partial_json.trim_end().ends_with(',') {
         partial_json.rfind(',').unwrap()
     } else {
         partial_json.len()
@@ -133,8 +142,6 @@ pub fn fix_json(partial_json: &str) -> String {
             },
         }
     }
-
-    // todo: remove traiiling comma
 
     final_json
 }
@@ -175,7 +182,7 @@ impl<'a> JsonParser<'a> {
     }
 
     fn token_as_unit(&self, token: &JsonToken) -> JsonUnit<'a> {
-        let source = self.tokenizer.span_source(&token);
+        let source = self.tokenizer.span_source(token);
         if source.starts_with("\"") {
             return JsonUnit::String(source.trim_matches('"'));
         }
@@ -188,7 +195,7 @@ impl<'a> JsonParser<'a> {
         if source.parse::<isize>().is_ok() {
             return JsonUnit::Number(source);
         }
-        return JsonUnit::Null;
+        JsonUnit::Null
     }
 
     fn parse_unit(&mut self) -> JResult<JsonUnit<'a>> {
