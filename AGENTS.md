@@ -31,6 +31,15 @@ Two independent Rust crates, no root workspace — run cargo per crate:
 ## CI
 
 `.github/workflows/CI.yml` (maturin-generated): the `test` job runs
-`cargo test` + `cargo clippy -D warnings` on both crates on every push and PR;
-the wheel-build matrix and the PyPI `release` job run only on pushes to
-`main` and tags.
+`cargo test` + `cargo clippy -D warnings` on both crates on every PR.
+Nothing runs on plain pushes to `main`; the wheel-build matrix, PyPI
+publish (`release` job), and crates.io publish (`publish-crates` job)
+run only when a `v*` tag is pushed.
+
+## Releases
+
+Manual, one command from `main`: `./scripts/release.sh <patch|minor|major>`.
+It bumps both `Cargo.toml`s in lockstep, refreshes lockfiles, commits,
+tags `vX.Y.Z`, and pushes — the tag push triggers publishing to PyPI and
+crates.io. Requires `PYPI_API_TOKEN` and `CARGO_REGISTRY_TOKEN` secrets.
+Tags are always plain `vX.Y.Z` (no suffixes).
