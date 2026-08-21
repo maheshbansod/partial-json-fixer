@@ -404,3 +404,83 @@ mod escaped_backslash {
     }
 }
 
+mod parse_numbers {
+    // https://github.com/maheshbansod/partial-json-fixer/issues/3
+    use partial_json_fixer::{fix_json_parse, JsonUnit};
+
+    fn unit_text(input: &str) -> String {
+        match fix_json_parse(input).unwrap() {
+            partial_json_fixer::JsonValue::Unit(unit) => unit.to_string(),
+            other => panic!("expected a unit for {input:?}, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn top_level_float_round_trips() {
+        assert_eq!(unit_text("3.14"), "3.14");
+    }
+
+    #[test]
+    fn float_inside_object_parses() {
+        let value = fix_json_parse(r#"{"pi": 3.14159}"#).unwrap();
+        assert_eq!(
+            match value {
+                partial_json_fixer::JsonValue::Object(obj) => obj.values[0].1.to_string(),
+                other => panic!("expected an object, got {other:?}"),
+            },
+            "3.14159"
+        );
+    }
+
+    #[test]
+    fn exponent_forms_round_trip() {
+        for input in ["1.5e10", "2E-3", "1e+10", "5e10"] {
+            assert_eq!(unit_text(input), input);
+        }
+    }
+
+    #[test]
+    fn negative_decimals_round_trip() {
+        for input in ["-2.5", "-0.5e-3"] {
+            assert_eq!(unit_text(input), input);
+        }
+    }
+
+    #[test]
+    fn integers_beyond_isize_round_trip() {
+        assert_eq!(unit_text("92233720368547758080"), "92233720368547758080");
+    }
+
+    #[test]
+    fn numbers_are_number_units() {
+        for input in ["3.14", "-2.5", "1e+10", "92233720368547758080"] {
+            assert!(matches!(
+                fix_json_parse(input).unwrap(),
+                partial_json_fixer::JsonValue::Unit(JsonUnit::Number(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn container_display_re_emits_numbers_byte_identical() {
+        let inputs = [
+            r#"{"pi": 3.14159}"#,
+            r#"{"e": 1.5e10, "neg": -2.5}"#,
+            r#"[3.14, -0.5e-3, 92233720368547758080]"#,
+            r#"{"big": 92233720368547758080}"#,
+        ];
+        for input in inputs {
+            let value = fix_json_parse(input).unwrap();
+            assert_eq!(value.to_string(), input);
+        }
+    }
+
+    #[test]
+    fn non_number_barewords_still_become_null() {
+        assert!(matches!(
+            fix_json_parse("tru").unwrap(),
+            partial_json_fixer::JsonValue::Unit(JsonUnit::Null)
+        ));
+    }
+}
+
