@@ -241,3 +241,98 @@ fn test_structural_trailing_comma_after_string_still_stripped() {
     let result = fix_json_to_string(partial).unwrap();
     assert_eq!(result, "{\"a\": \"x\"}");
 }
+
+// https://github.com/maheshbansod/partial-json-fixer/issues/4
+mod always_parseable {
+    use super::*;
+
+    fn assert_parses(partial: &str) {
+        let fixed = fix_json_to_string(partial).unwrap();
+        serde_json::from_str::<serde_json::Value>(&fixed)
+            .unwrap_or_else(|e| panic!("fix_json({partial:?}) = {fixed:?} does not parse: {e}"));
+    }
+
+    #[test]
+    fn cut_inside_unicode_escape() {
+        let result = fix_json_to_string(r#"{"s": "ab\u00"#).unwrap();
+        assert_eq!(result, r#"{"s": "ab"}"#);
+        assert_parses(r#"{"s": "ab\u00"#);
+    }
+
+    #[test]
+    fn cut_at_lone_backslash() {
+        let result = fix_json_to_string(r#"{"s": "ab\"#).unwrap();
+        assert_eq!(result, r#"{"s": "ab"}"#);
+        assert_parses(r#"{"s": "ab\"#);
+    }
+
+    #[test]
+    fn complete_escape_at_end_untouched() {
+        let result = fix_json_to_string(r#"{"s": "ab\n"#).unwrap();
+        assert_eq!(result, r#"{"s": "ab\n"}"#);
+        assert_parses(r#"{"s": "ab\n"#);
+    }
+
+    #[test]
+    fn cut_after_decimal_point() {
+        let result = fix_json_to_string("{\"n\": 12.").unwrap();
+        assert_eq!(result, "{\"n\": 12}");
+        assert_parses("{\"n\": 12.");
+    }
+
+    #[test]
+    fn cut_inside_exponent() {
+        // Trimmed back to the longest valid number prefix.
+        let result = fix_json_to_string("{\"n\": 1e").unwrap();
+        assert_eq!(result, "{\"n\": 1}");
+        assert_parses("{\"n\": 1e");
+    }
+
+    #[test]
+    fn cut_inside_exponent_sign() {
+        assert_parses("{\"n\": 1e-");
+    }
+
+    #[test]
+    fn cut_at_minus_sign() {
+        assert_parses("{\"n\": -");
+    }
+
+    #[test]
+    fn truncated_literal_true() {
+        let result = fix_json_to_string("{\"b\": tru").unwrap();
+        assert_eq!(result, "{\"b\": null}");
+        assert_parses("{\"b\": tru");
+    }
+
+    #[test]
+    fn truncated_literal_false_and_null() {
+        assert_parses("{\"b\": fals");
+        assert_parses("{\"x\": nul");
+        assert_parses("[tru");
+    }
+
+    #[test]
+    fn complete_json_untouched() {
+        assert_eq!(fix_json_to_string("[true, false, null, 1.5, 1e10]").unwrap(), "[true, false, null, 1.5, 1e10]");
+    }
+
+    #[test]
+    fn every_cut_point_of_sample_documents_parses() {
+        let docs = [
+            r#"{"s": "ab\u00c3 def \\ end", "t": "x\ny"}"#,
+            r#"{"n": 12.5, "m": -1e10, "k": 0.5e-3}"#,
+            r#"{"b": true, "c": false, "d": null, "arr": [true, false]}"#,
+            r#"[1.5e3, {"key": "val\u0041ue"}, [null, true]]"#,
+            r#"{"nested": {"deep": [{"s": "esc \u001f tap \t", "n": 3.14}]}}"#,
+        ];
+        for doc in docs {
+            for (i, _) in doc.char_indices() {
+                let partial = &doc[..i];
+                assert_parses(partial);
+            }
+            assert_parses(doc);
+        }
+    }
+}
+
