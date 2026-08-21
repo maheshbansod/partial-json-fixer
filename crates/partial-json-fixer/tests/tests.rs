@@ -318,6 +318,21 @@ mod always_parseable {
     }
 
     #[test]
+    fn empty_and_whitespace_only_input() {
+        assert_eq!(fix_json_to_string("").unwrap(), "null");
+        assert_eq!(fix_json_to_string("   ").unwrap(), "null");
+        assert_parses("");
+        assert_parses("   ");
+    }
+
+    #[test]
+    fn uppercase_u_escape_is_not_unicode_escape() {
+        // JSON only defines lowercase `\u`; `\U` is a plain escaped char.
+        let result = fix_json_to_string(r#"{"s": "ab\U00"#).unwrap();
+        assert_eq!(result, r#"{"s": "ab\U00"}"#);
+    }
+
+    #[test]
     fn every_cut_point_of_sample_documents_parses() {
         let docs = [
             r#"{"s": "ab\u00c3 def \\ end", "t": "x\ny"}"#,
