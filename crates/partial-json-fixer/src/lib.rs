@@ -10,7 +10,7 @@ use std::{fmt::Display, str::CharIndices};
 /// Takes a partial JSON string, kinda parses it and returns a complete JSON object
 /// The JSON is tokenized and parsed. It can then be converted to a string with `.to_string()`
 /// method
-pub fn fix_json_parse(partial_json: &str) -> JResult<JsonValue> {
+pub fn fix_json_parse(partial_json: &str) -> JResult<JsonValue<'_>> {
     let tokenizer = JsonTokenizer::new(partial_json);
     let parser = JsonParser::new(tokenizer);
 
@@ -182,7 +182,7 @@ impl<'a> JsonParser<'a> {
     }
 
     fn token_as_unit(&self, token: &JsonToken) -> JsonUnit<'a> {
-        let source = self.tokenizer.span_source(&token);
+        let source = self.tokenizer.span_source(token);
         if source.starts_with("\"") {
             return JsonUnit::String(source.trim_matches('"'));
         }
@@ -195,7 +195,7 @@ impl<'a> JsonParser<'a> {
         if source.parse::<isize>().is_ok() {
             return JsonUnit::Number(source);
         }
-        return JsonUnit::Null;
+        JsonUnit::Null
     }
 
     fn parse_unit(&mut self) -> JResult<JsonUnit<'a>> {
