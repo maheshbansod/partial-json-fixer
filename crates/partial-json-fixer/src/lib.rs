@@ -24,27 +24,36 @@ pub fn fix_json_parse(partial_json: &str) -> JResult<JsonValue<'_>> {
 /// This approach is likely faster than the parsing appraoch (TODO: benchmmark maybe)
 /// It's assumed that the given JSON would **always** be a valid incomplete JSON.
 pub fn fix_json(partial_json: &str) -> String {
-    enum Wrapper {
-        Brace,
-        SquareBracket,
-        Quote,
-        Escape,
-        ObjectKey,
-        ObjectValue,
-    }
-    let chars = partial_json.chars();
     let mut wrappers = vec![];
-    for c in chars {
+    // Byte index of an unescaped backslash waiting for its escape character.
+    let mut pending_escape: Option<usize> = None;
+    // (byte index of the backslash, hex digits seen so far) while inside a
+    // possibly-incomplete `\uXXXX` sequence.
+    let mut unicode_escape: Option<(usize, usize)> = None;
+    for (idx, c) in partial_json.char_indices() {
         match wrappers.last() {
             Some(Wrapper::Quote) => {
-                if c == '"' {
+                if let Some(esc_idx) = pending_escape.take() {
+                    // This char completes a `\c` escape sequence.
+                    if c == 'u' {
+                        unicode_escape = Some((esc_idx, 0));
+                    }
+                } else if let Some((_, hex_count)) = unicode_escape.as_mut() {
+                    if *hex_count < 4 && c.is_ascii_hexdigit() {
+                        *hex_count += 1;
+                    } else {
+                        unicode_escape = None;
+                        if c == '"' {
+                            wrappers.pop();
+                        } else if c == '\\' {
+                            pending_escape = Some(idx);
+                        }
+                    }
+                } else if c == '"' {
                     wrappers.pop();
                 } else if c == '\\' {
-                    wrappers.push(Wrapper::Escape);
+                    pending_escape = Some(idx);
                 }
-            }
-            Some(Wrapper::Escape) => {
-                wrappers.pop(); // get out of escape mode 
             }
             _ => {
                 match c {
@@ -99,16 +108,23 @@ pub fn fix_json(partial_json: &str) -> String {
     // If the input ends inside an unterminated string, the final comma is
     // string content and must be preserved. Quote and Escape can only ever
     // appear at the top of the stack.
-    let ends_inside_string = matches!(
-        wrappers.last(),
-        Some(Wrapper::Quote | Wrapper::Escape)
-    );
+    let ends_inside_string = matches!(wrappers.last(), Some(Wrapper::Quote));
 
-    let end_index = if !ends_inside_string && partial_json.trim_end().ends_with(',') {
+    let mut end_index = if !ends_inside_string && partial_json.trim_end().ends_with(',') {
         partial_json.rfind(',').unwrap()
     } else {
         partial_json.len()
     };
+
+    // Repair an incomplete trailing token so the output always parses as JSON.
+    // https://github.com/maheshbansod/partial-json-fixer/issues/4
+    end_index = repair_incomplete_trailing_token(
+        partial_json,
+        end_index,
+        ends_inside_string,
+        (pending_escape, unicode_escape),
+        &mut wrappers,
+    );
 
     let mut final_json = partial_json[0..end_index].to_string();
     while let Some(wrapper) = wrappers.pop() {
@@ -131,19 +147,160 @@ pub fn fix_json(partial_json: &str) -> String {
                     wrappers.pop();
                 }
             },
-            Wrapper::Escape => {
-                final_json.push('\\');
-            },
             Wrapper::ObjectKey => {
                 final_json.push_str(": null");
             },
             Wrapper::ObjectValue => {
-                final_json.push_str(" null");
+                if !final_json.ends_with(char::is_whitespace) {
+                    final_json.push(' ');
+                }
+                final_json.push_str("null");
             },
         }
     }
 
+    if final_json.trim().is_empty() {
+        // An empty (or whitespace-only) input is still a prefix of valid
+        // JSON; emit something parseable.
+        return "null".to_string();
+    }
+
     final_json
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum Wrapper {
+    Brace,
+    SquareBracket,
+    Quote,
+    ObjectKey,
+    ObjectValue,
+}
+
+/// Byte index of an unescaped backslash waiting for its escape character, and
+/// how many hex digits have been seen while inside a possibly-incomplete
+/// `\uXXXX` sequence.
+type EscapeState = (Option<usize>, Option<(usize, usize)>);
+
+/// Adjusts `end_index` so any incomplete trailing token is repaired and the
+/// output always parses as JSON:
+/// - inside an unterminated string: drop a dangling lone `\` or partial `\uXXXX`
+/// - otherwise: trim a truncated literal (`tru`) or number (`12.`, `1e-`)
+///
+/// May push an `ObjectValue` wrapper so the closing pass fills an emptied
+/// value slot with `null`.
+fn repair_incomplete_trailing_token(
+    partial_json: &str,
+    mut end_index: usize,
+    ends_inside_string: bool,
+    escape_state: EscapeState,
+    wrappers: &mut Vec<Wrapper>,
+) -> usize {
+    let (pending_escape, unicode_escape) = escape_state;
+    if ends_inside_string {
+        if let Some(esc_idx) = pending_escape {
+            end_index = end_index.min(esc_idx);
+        } else if let Some((bs_idx, hex_count)) = unicode_escape {
+            if hex_count < 4 {
+                end_index = end_index.min(bs_idx);
+            }
+        }
+        return end_index;
+    }
+
+    // Ends in (or right after) a bareword token: trim a truncated literal or
+    // number back to something a JSON parser accepts.
+    let trimmed = partial_json[..end_index].trim_end();
+    let tok_start = trimmed
+        .char_indices()
+        .rev()
+        .take_while(|(_i, c)| c.is_alphanumeric() || matches!(c, '.' | '+' | '-'))
+        .last()
+        .map(|(i, _)| i);
+    let Some(start) = tok_start else {
+        return end_index;
+    };
+    let tok = &trimmed[start..];
+    let is_numberish =
+        tok.chars()
+            .all(|c| c.is_ascii_digit() || matches!(c, '.' | '+' | '-' | 'e' | 'E'));
+    let truncated_literal = ["true", "false", "null"]
+        .iter()
+        .any(|l| l.starts_with(tok) && *l != tok);
+    if !(truncated_literal || (is_numberish && !is_valid_json_number(tok))) {
+        return end_index;
+    }
+
+    if truncated_literal {
+        end_index = start;
+    } else {
+        // Numbers: trim back to the longest valid prefix
+        // (e.g. `12.` -> `12`, `1e-` -> `1`).
+        let mut best = None;
+        for (off, _) in tok.char_indices().skip(1) {
+            if is_valid_json_number(&tok[..off]) {
+                best = Some(off);
+            }
+        }
+        end_index = start + best.unwrap_or(0);
+    }
+    match partial_json[..end_index].trim_end().chars().next_back() {
+        Some(':') => {
+            // The value slot is now empty; make the closing pass fill it.
+            wrappers.push(Wrapper::ObjectValue);
+        }
+        Some(',') => {
+            // A dangling separator would be invalid; drop it.
+            end_index = partial_json[..end_index].trim_end().len() - 1;
+        }
+        _ => {}
+    }
+    end_index
+}
+
+/// Checks whether `s` is a complete JSON number (stricter than `f64::from_str`,
+/// which accepts things like "12." that serde_json rejects).
+fn is_valid_json_number(s: &str) -> bool {
+    let mut chars = s.chars().peekable();
+    if chars.peek() == Some(&'-') {
+        chars.next();
+    }
+    // integer part
+    match chars.peek() {
+        Some('0') => {
+            chars.next();
+        }
+        Some(c) if c.is_ascii_digit() => {
+            while matches!(chars.peek(), Some(c) if c.is_ascii_digit()) {
+                chars.next();
+            }
+        }
+        _ => return false,
+    }
+    // fraction
+    if chars.peek() == Some(&'.') {
+        chars.next();
+        if !matches!(chars.peek(), Some(c) if c.is_ascii_digit()) {
+            return false;
+        }
+        while matches!(chars.peek(), Some(c) if c.is_ascii_digit()) {
+            chars.next();
+        }
+    }
+    // exponent
+    if matches!(chars.peek(), Some('e') | Some('E')) {
+        chars.next();
+        if matches!(chars.peek(), Some('+') | Some('-')) {
+            chars.next();
+        }
+        if !matches!(chars.peek(), Some(c) if c.is_ascii_digit()) {
+            return false;
+        }
+        while matches!(chars.peek(), Some(c) if c.is_ascii_digit()) {
+            chars.next();
+        }
+    }
+    chars.next().is_none()
 }
 
 struct JsonParser<'a> {
