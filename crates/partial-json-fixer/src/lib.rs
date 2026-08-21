@@ -341,7 +341,14 @@ impl<'a> JsonParser<'a> {
     fn token_as_unit(&self, token: &JsonToken) -> JsonUnit<'a> {
         let source = self.tokenizer.span_source(token);
         if source.starts_with("\"") {
-            return JsonUnit::String(source.trim_matches('"'));
+            // Strip exactly one quote from each end: the closing quote may
+            // itself be preceded by escapes (e.g. content ending in `\"`),
+            // and trim_matches would eat those content characters too.
+            let stripped = source
+                .strip_prefix('"')
+                .and_then(|s| s.strip_suffix('"'))
+                .unwrap_or(source);
+            return JsonUnit::String(stripped);
         }
         if source == "true" {
             return JsonUnit::True;
@@ -647,17 +654,16 @@ impl<'a> JsonTokenizer<'a> {
 
         if c == '"' {
             // i need to consume the whole string
-            let mut previous_char = None;
+            let mut in_escape = false;
             let mut string_end_index = i + c.len_utf8();
             for (i, str_char) in self.char_indices.by_ref() {
                 string_end_index = i + str_char.len_utf8();
-                if str_char == '"' {
-                    if let Some('\\') = previous_char {
-                    } else {
-                        break;
-                    }
+                if str_char == '"' && !in_escape {
+                    break;
                 }
-                previous_char = Some(str_char);
+                // A backslash escapes only the next character: after it is
+                // consumed, the state resets so a later quote closes the string.
+                in_escape = !in_escape && str_char == '\\';
             }
             return Some(JsonToken {
                 kind: JsonTokenKind::String,
