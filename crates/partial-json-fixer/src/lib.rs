@@ -95,7 +95,16 @@ pub fn fix_json(partial_json: &str) -> String {
         }
     }
 
-    let end_index = if partial_json.trim_end().ends_with(',') {
+    // A trailing comma is only structural if it sits outside any string.
+    // If the input ends inside an unterminated string, the final comma is
+    // string content and must be preserved. Quote and Escape can only ever
+    // appear at the top of the stack.
+    let ends_inside_string = matches!(
+        wrappers.last(),
+        Some(Wrapper::Quote | Wrapper::Escape)
+    );
+
+    let end_index = if !ends_inside_string && partial_json.trim_end().ends_with(',') {
         partial_json.rfind(',').unwrap()
     } else {
         partial_json.len()
@@ -133,8 +142,6 @@ pub fn fix_json(partial_json: &str) -> String {
             },
         }
     }
-
-    // todo: remove traiiling comma
 
     final_json
 }
