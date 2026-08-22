@@ -126,7 +126,11 @@ pub fn fix_json(partial_json: &str) -> String {
         &mut wrappers,
     );
 
-    let mut final_json = partial_json[0..end_index].to_string();
+    // The repaired output is the prefix plus at most 6 bytes per unclosed
+    // wrapper (": null" being the longest closure), so a single exact
+    // allocation suffices.
+    let mut final_json = String::with_capacity(end_index + wrappers.len() * 6);
+    final_json.push_str(&partial_json[..end_index]);
     while let Some(wrapper) = wrappers.pop() {
         match wrapper {
             Wrapper::Brace => {
@@ -313,20 +317,19 @@ impl<'a> JsonParser<'a> {
     }
 
     fn parse(mut self) -> JResult<JsonValue<'a>> {
-        let (_errors, value) = self.parse_value()?;
-        Ok(value)
+        self.parse_value()
     }
 
-    fn parse_value(&mut self) -> JResult<(Vec<JsonError>, JsonValue<'a>)> {
+    fn parse_value(&mut self) -> JResult<JsonValue<'a>> {
         let token = self.tokenizer.next().ok_or(JsonError::UnexpectedEnd)?;
 
         match token.kind {
             JsonTokenKind::Null | JsonTokenKind::String | JsonTokenKind::Number => {
-                Ok((vec![], JsonValue::Unit(self.token_as_unit(&token))))
+                Ok(JsonValue::Unit(self.token_as_unit(&token)))
             }
-            JsonTokenKind::OpeningBrace => Ok((vec![], JsonValue::Object(self.parse_object()?))),
+            JsonTokenKind::OpeningBrace => Ok(JsonValue::Object(self.parse_object()?)),
             JsonTokenKind::OpeningSquareBracket => {
-                Ok((vec![], JsonValue::Array(self.parse_array()?)))
+                Ok(JsonValue::Array(self.parse_array()?))
             }
             JsonTokenKind::Comma
             | JsonTokenKind::Colon
@@ -381,7 +384,7 @@ impl<'a> JsonParser<'a> {
             if self.tokenizer.is_next_closing_square_bracket() || self.tokenizer.is_on_last() {
                 break;
             }
-            if let Ok((_errors, value)) = self.parse_value() {
+            if let Ok(value) = self.parse_value() {
                 members.push(value);
 
                 match self.tokenizer.next() {
@@ -425,8 +428,7 @@ impl<'a> JsonParser<'a> {
                 values.push((key, JsonValue::Null));
                 break;
             }
-            let (_errors, value) = value.unwrap();
-            values.push((key, value));
+            values.push((key, value.unwrap()));
 
             match self.tokenizer.next() {
                 Some(token) if matches!(token.kind, JsonTokenKind::ClosingBrace) => {
@@ -509,15 +511,14 @@ pub struct JsonArray<'a> {
 
 impl<'a> Display for JsonArray<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "[{}]",
-            self.members
-                .iter()
-                .map(|m| m.to_string())
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
+        f.write_str("[")?;
+        for (i, member) in self.members.iter().enumerate() {
+            if i > 0 {
+                f.write_str(", ")?;
+            }
+            write!(f, "{member}")?;
+        }
+        f.write_str("]")
     }
 }
 
@@ -527,15 +528,14 @@ pub struct JsonObject<'a> {
 }
 impl<'a> Display for JsonObject<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{{{}}}",
-            self.values
-                .iter()
-                .map(|(key, value)| format!("{}: {}", key, value))
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
+        f.write_str("{")?;
+        for (i, (key, value)) in self.values.iter().enumerate() {
+            if i > 0 {
+                f.write_str(", ")?;
+            }
+            write!(f, "{key}: {value}")?;
+        }
+        f.write_str("}")
     }
 }
 
