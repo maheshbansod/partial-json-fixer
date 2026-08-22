@@ -13,4 +13,14 @@ categories = ["text-processing", "parsing"]
 [dependencies]
 
 [dev-dependencies]
+criterion = "0.5"
+# Used by tests/tests.rs to validate that fixed output parses.
 serde_json = "1"
+
+[[bench]]
+name = "json"
+harness = false
+
+[[bench]]
+name = "allocations"
+harness = false
