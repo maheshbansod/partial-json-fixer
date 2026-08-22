@@ -1,0 +1,29 @@
+# Hand-maintained: tests and lints on every PR (and pushes to main).
+# Do NOT regenerate this file with maturin — the release pipeline lives
+# in release.yml (see scripts/regenerate-release-ci.py).
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run tests
+        run: |
+          cargo test --manifest-path crates/partial-json-fixer/Cargo.toml
+          cargo test --manifest-path py/partial-json-fixer/Cargo.toml
+      - name: Lint
+        run: |
+          cargo clippy --manifest-path crates/partial-json-fixer/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path py/partial-json-fixer/Cargo.toml --all-targets -- -D warnings

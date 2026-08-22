@@ -36,11 +36,21 @@ Two independent Rust crates, no root workspace — run cargo per crate:
 
 ## CI
 
-`.github/workflows/CI.yml` (maturin-generated): the `test` job runs
-`cargo test` + `cargo clippy -D warnings` on both crates on every PR.
-Nothing runs on plain pushes to `main`; the wheel-build matrix, PyPI
-publish (`release` job), and crates.io publish (`publish-crates` job)
-run only when a `v*` tag is pushed.
+Two workflows:
+
+- `.github/workflows/test.yml` (hand-maintained): `cargo test` +
+  `cargo clippy -D warnings` on both crates on every PR and pushes to
+  `main`. Never regenerate this with maturin.
+- `.github/workflows/release.yml` (generated): wheel-build matrix, PyPI
+  publish, and crates.io publish. Triggered only by `v*` tags (plus manual
+  `workflow_dispatch` for dry runs — per-job tag guards prevent a manual
+  run from publishing).
+
+**Regenerating release.yml:** don't edit it by hand — edit
+`scripts/regenerate-release-ci.py`, which runs `maturin generate-ci` in a
+throwaway repo and re-applies the project tweaks (tag-only trigger, no
+test job, relative manifest paths, custom `publish-crates` job). Run it,
+review the diff, commit.
 
 **Local test runs:** only run `cargo test` and
 `cargo clippy --all-targets -- -D warnings` inside
