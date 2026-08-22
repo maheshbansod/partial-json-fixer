@@ -8,9 +8,7 @@
 //!
 //! `fix_json` (string-based repair) is compared head-to-head with
 //! `fix_json_parse` (tokenize + parse into a borrowed AST) across partial
-//! prefixes of each sample document. `serde_json/from_str-full` is included
-//! as a reference point: what parsing fully valid JSON costs, to show how
-//! much overhead the "partial" handling adds.
+//! prefixes of each sample document.
 
 use std::hint::black_box;
 
@@ -68,18 +66,6 @@ fn bench_display(c: &mut Criterion) {
     group.finish();
 }
 
-/// serde_json parsing the *complete* document, as an upper-bound reference.
-fn bench_serde_reference(c: &mut Criterion) {
-    let mut group = c.benchmark_group("serde_json");
-    for case in cases() {
-        group.throughput(Throughput::Bytes(case.full.len() as u64));
-        group.bench_function(case.name, |b| {
-            b.iter(|| serde_json::from_str::<serde_json::Value>(black_box(&case.full)))
-        });
-    }
-    group.finish();
-}
-
 /// (benchmark label, input) pairs: the full doc plus prefixes at 10/50/90%.
 fn prefix_inputs(full: &str) -> Vec<(String, String)> {
     let mut inputs = vec![("full".to_string(), full.to_string())];
@@ -90,11 +76,5 @@ fn prefix_inputs(full: &str) -> Vec<(String, String)> {
     inputs
 }
 
-criterion_group!(
-    benches,
-    bench_fix_json,
-    bench_fix_json_parse,
-    bench_display,
-    bench_serde_reference,
-);
+criterion_group!(benches, bench_fix_json, bench_fix_json_parse, bench_display);
 criterion_main!(benches);
